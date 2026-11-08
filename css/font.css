@@ -1,0 +1,10 @@
+/* The app's typeface: Atkinson Hyperlegible Next (SIL Open Font License 1.1,
+   fonts/OFL.txt), made for legibility, so 1, 7, 6, 8 and 9 never blur, also as
+   small pencil marks. One variable file, weights 200 to 800. */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/AtkinsonHyperlegibleNext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+:root { --font: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }

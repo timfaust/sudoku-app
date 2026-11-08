@@ -1,0 +1,949 @@
+/* Sudoku Reasoner. Light. Layout: on the desktop, the board on the left and a
+   quiet column on the right; on a phone or a narrow window, one column, the
+   board first (APP_CONCEPT.md §7). Structure comes from type, space and hairlines, not from boxes; the
+   only framed things are the board and the digit pad, which is drawn like a box
+   of the board.
+
+   Every value below the tokens comes from a token. */
+
+:root {
+  /* ---- colour ---- */
+  --page: #f6f5f1;
+  --paper: #fffefb;
+  --ink: #1b1d20;
+  --ink-2: #4b4f56;
+  --ink-3: #696d73;           /* the quietest text that still reads (4.5:1) */
+  --ink-hover: #34373b;
+  --rule: #e2e0da;
+  --rule-strong: #c9c7c0;
+  --grid-minor: #d4d2cb;
+  --grid-major: #2a2c2f;
+  --accent: #2747a8;          /* the selection, its digit's candidates, focus */
+  --select: #dce4f6;
+  --cell-hover: #ebeff8;      /* a cell that a click would select */
+  --peer: #f0efea;
+  --hover: #eeede8;
+  --pencil: #63666c;          /* pencil marks, 4.5:1 on every cell shade */
+  --cover: #edece7;           /* a cover's houses */
+  --wrong: #b23d36;           /* a mistake or an error: a check, never a reason */
+  --wrong-soft: #f8e2df;
+  --right: #2b722b;           /* a check that found no mistakes: a check, never a reason */
+  --right-soft: #e3f0de;
+  --scrim: rgb(30 28 24 / .28);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / .08), 0 18px 48px rgb(0 0 0 / .18);
+
+  /* The four ideas (CONCEPT.md): one colour each, the same in every mode. */
+  --idea-single: #2c7a6b;
+  --idea-count: #ab6512;
+  --idea-cases: #6549b0;
+  --idea-fail: #b23d36;
+  --idea-single-soft: #dff0eb;
+  --idea-count-soft: #f7ead8;
+  --idea-cases-soft: #ebe6f7;
+  --idea-fail-soft: #f8e2df;
+
+  /* The candidate heat map (D74): effort 1-10 as one warm ink ramp, light to
+     dark, on the strip's fixed scale. Digits stay ink on 1-5 and turn paper on
+     6-10, each 4.5:1 or more on its fill. */
+  --heat-1: #e9e4dc;
+  --heat-2: #d6d0c8;
+  --heat-3: #c3bdb4;
+  --heat-4: #b0aaa1;
+  --heat-5: #9c968d;
+  --heat-6: #756f66;
+  --heat-7: #635c54;
+  --heat-8: #514b42;
+  --heat-9: #403931;
+  --heat-10: #2f2920;
+
+  /* ---- type ---- */
+  --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 15px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 34px;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-book: 450;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -.02em;
+  --tracking-snug: -.01em;
+  --tracking-code: .08em;
+
+  /* ---- space: 2 4 6 8 12 16 20 24 32 40 56 ---- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 56px;
+
+  /* ---- size and shape ---- */
+  --hairline: 1px;
+  --stroke-fine: 1.5px;       /* small outlined keys */
+  --stroke: 2px;              /* frames, underlines, focus, bars */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --control: 38px;            /* buttons */
+  --control-sm: 32px;         /* word switches */
+  --key: 60px;                /* digit pad keys */
+  --key-row: 48px;            /* digit pad keys in a row (Learn) */
+  --dot: 9px;                 /* an idea's colour dot */
+  --swatch: 12px;             /* legend keys */
+  --heat-key: 18px;           /* the heat map's numbered keys */
+
+  /* ---- layout ---- */
+  --bar: 60px;
+  --bar-narrow: 52px;
+  --gutter-narrow: 16px;      /* the page's edge on a phone */
+  --key-touch: 52px;          /* digit pad keys in a row, on a phone */
+  --board-max: 800px;
+  --side-min: 340px;
+  --side-max: 540px;
+  --measure: 560px;           /* dialogs and messages */
+  --stage-reserve: 64px;      /* room under the board for its legend or caption, so the board has one
+                                 size in every mode */
+  --strip-h: 64px;            /* the difficulty strip at the ceiling */
+  --strip-floor: 6px;         /* a bar's height at effort 0, so effort 1 shows */
+  --strip-bar: 22px;          /* a bar's width while there is room */
+  --strip-gutter: 56px;       /* the level's label */
+  --strip-search-h: 32px;     /* search below the line: half of effort's height, the second number */
+  --efforts-h: 40px;          /* a lesson's efforts, on the strip's scale */
+  --efforts-h-sm: 22px;       /* the same, in the list of lessons */
+  --steps: 10;                /* the rating's ceiling: the levels' and the efforts' columns */
+  --effort-bar-sm: 10px;
+  --mini-strip: 176px;        /* a puzzle's strip in a list */
+  --compare-figure: 56px;     /* a number's column in Compare */
+  --row: 56px;                /* a puzzle's row in a list */
+  --round-h: 320px;           /* Analyse's round and its step list, so the step card below keeps its place */
+  --analyse-room: 72px;       /* the row's Analyse link, at its right */
+  --mini-bar: 9px;            /* its widest bar */
+  --mini-search-h: 10px;      /* its search below the line */
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --fast: 120ms;
+
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+/* Touch (U5): no double-tap zoom, no pull-to-refresh, no grey flash on a tap,
+   and controls whose words a long press does not select. */
+html { touch-action: manipulation; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+button, .button, .bar, .digits, .pad { user-select: none; -webkit-user-select: none; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: var(--weight-regular) var(--text-base)/var(--leading-normal) var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+/* The old view, held still over the new one while it draws its board (main.js). */
+.still { position: absolute; z-index: 5; min-height: 100dvh; background: var(--page); pointer-events: none; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: var(--stroke) solid var(--accent); outline-offset: var(--space-1); }
+/* After a click, a redraw still puts focus back (dom.keepFocus); its ring shows
+   only once the keyboard moves it (main.js). */
+[data-input="pointer"] :focus-visible { outline: none; }
+p { margin: 0; }
+
+/* ---------- shell ---------- */
+
+.app { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+
+.bar {
+  z-index: 5;
+  display: flex; align-items: center; gap: var(--space-9);
+  height: var(--bar); padding: 0 var(--space-10);
+  background: var(--page);
+  border-bottom: var(--hairline) solid var(--rule);
+}
+.wordmark { display: flex; align-items: center; gap: var(--space-4); font-weight: var(--weight-bold); letter-spacing: var(--tracking-snug); color: var(--ink); text-decoration: none; }
+.wordmark svg { width: var(--text-lg); height: var(--text-lg); flex: none; }
+.narrow-only { display: none; }
+.modes { display: flex; gap: var(--space-8); height: 100%; }
+.modes a {
+  display: flex; align-items: center; height: 100%;
+  color: var(--ink-2); text-decoration: none; font-weight: var(--weight-medium);
+  border-bottom: var(--stroke) solid transparent; margin-bottom: calc(-1 * var(--hairline));
+}
+@media (hover: hover) { .modes a:hover { color: var(--ink); } }
+.modes a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
+.modes a:focus-visible { outline-offset: calc(-1 * var(--stroke)); }
+.bar-spacer { flex: 1; }
+
+/* The board takes the height and width it can; the side column keeps a reading
+   width. Narrow screens stack the two (see the end of this file). */
+.view {
+  width: 100%; min-height: 0; overflow: hidden;
+  padding: var(--space-8) var(--space-10);
+  display: grid; grid-template-columns: auto minmax(var(--side-min), var(--side-max));
+  gap: var(--space-11); align-items: stretch; justify-content: center;
+}
+.stage {
+  --board-w: min(var(--board-max), calc(100dvh - var(--bar) - 2 * var(--space-8) - var(--stage-reserve)), calc(100vw - var(--side-min) - 2 * var(--space-10) - var(--space-11)));
+  width: var(--board-w);
+  display: grid; gap: var(--space-5); align-content: start;
+}
+/* The column clips what does not fit, with room past its text for the rows and
+   buttons whose tint reaches past it (their padding, kept in line by a negative
+   margin). */
+.side {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;
+  padding-inline: var(--space-4); margin-inline: calc(-1 * var(--space-4));
+}
+.side > section { padding: var(--space-6) 0; border-top: var(--hairline) solid var(--rule); }
+.side > section:first-child { padding-top: 0; border-top: 0; }
+.side > section:empty { display: none; }
+.side > section:first-child:empty + section { padding-top: 0; border-top: 0; }
+
+/* ---------- type ---------- */
+
+/* Every column opens with one title: the puzzle's level, the lesson, the mode. */
+.title { font-size: var(--text-3xl); line-height: var(--leading-tight); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); margin: 0; }
+.lead { font-size: var(--text-lg); line-height: var(--leading-snug); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-snug); }
+.meta { color: var(--ink-2); font-size: var(--text-md); }
+.faint { color: var(--ink-3); font-size: var(--text-sm); }
+/* A named number: "effort 5", "search 32". */
+.figure { color: var(--ink-3); font-size: var(--text-sm); white-space: nowrap; }
+.figure b { color: var(--ink); font-size: var(--text-base); font-weight: var(--weight-bold); margin-left: var(--space-2); }
+.bad { color: var(--wrong); }
+kbd {
+  font: var(--weight-semibold) var(--text-xs)/1 var(--font); color: inherit;
+  border: var(--hairline) solid color-mix(in srgb, currentColor 35%, transparent); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2);
+}
+
+/* ---------- controls ---------- */
+
+.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-4);
+  height: var(--control); padding: 0 var(--space-6); border-radius: var(--radius-md);
+  border: var(--hairline) solid var(--rule-strong); background: var(--paper); color: var(--ink);
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+@media (hover: hover) { .button:hover { border-color: var(--ink-3); } }
+.button:disabled { color: var(--ink-3); border-color: var(--rule); background: transparent; cursor: default; }
+.button.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: var(--weight-semibold); }
+@media (hover: hover) { .button.primary:hover { background: var(--ink-hover); } }
+/* The main button, off: its own shape, faded, never a look-alike of an outlined one. */
+.button.primary:disabled { background: var(--rule-strong); border-color: var(--rule-strong); color: var(--paper); }
+.button.text { border-color: transparent; background: transparent; padding: 0 var(--space-4); color: var(--ink-2); }
+@media (hover: hover) { .button.text:hover { color: var(--ink); background: var(--hover); } }
+.button.text:disabled { background: transparent; color: var(--rule-strong); }
+.button.text[aria-pressed="true"] { color: var(--ink); background: var(--hover); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+.row > .push { margin-left: auto; }
+.link {
+  border: 0; padding: 0; background: none; color: var(--ink); cursor: pointer; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: var(--space-2);
+}
+@media (hover: hover) { .link:hover { text-decoration-color: var(--ink); } }
+.link.quiet { color: var(--ink-2); }
+
+/* Two or more choices that read like words: the chosen one is underlined.
+   Weights never change with the choice, so no word moves its neighbours; a
+   language's longer words wrap to a second row, each word whole (D81). */
+.switch { display: flex; flex-wrap: wrap; gap: 0 var(--space-7); }
+.switch button {
+  white-space: nowrap; display: inline-flex; align-items: center; gap: var(--space-4);
+  height: var(--control-sm); padding: 0; border: 0; border-bottom: var(--stroke) solid transparent; background: none;
+  color: var(--ink-2); font-weight: var(--weight-medium); cursor: pointer;
+}
+@media (hover: hover) { .switch button:hover { color: var(--ink); } }
+.switch button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ---------- ideas ---------- */
+
+.tone-single { --tone: var(--idea-single); --tone-soft: var(--idea-single-soft); }
+.tone-count { --tone: var(--idea-count); --tone-soft: var(--idea-count-soft); }
+.tone-cases { --tone: var(--idea-cases); --tone-soft: var(--idea-cases-soft); }
+.tone-fail { --tone: var(--idea-fail); --tone-soft: var(--idea-fail-soft); }
+.tone-none { --tone: var(--accent); --tone-soft: var(--select); }
+.idea { display: inline-flex; align-items: center; gap: var(--space-4); color: var(--ink-2); font-size: var(--text-md); }
+.idea::before { content: ""; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--tone); flex: none; }
+
+/* ---------- board ---------- */
+
+/* The board's own measures are in its viewBox units (a cell is 100), so they
+   scale with it. The strip and legend start at the grid's left edge, past the
+   row labels (46 of the board's 952 units). */
+.board {
+  --line-minor: 1.5;
+  --line-major: 3;
+  --line-frame: 4.5;
+  --mark-line: 2.5;
+  --mark-thin: 1.5;
+  --fail-line: 4;             /* a contradiction's frame */
+  --refute-line: 6;           /* the slash through a failed assumption */
+  --digit-size: 56px;
+  --pencil-size: 22px;
+  --note-corner-size: 22px;   /* the player's notes (D70): corner, and centre by how many */
+  --note-centre-size: 26px;
+  --note-centre-smaller: 21px;
+  --note-centre-smallest: 17px;
+  --label-size: 21px;
+  --number-size: 14px;
+  --halo: 7px;                /* a digit's outline where arrows cross it */
+  --halo-small: 5px;
+  --dash: 3 4;
+  --select-line: 4;
+  --wrong-line: 5;
+  --case-digit-size: 46px;    /* a digit that only holds inside a case */
+}
+.board-host, .legend { width: 100%; }
+.legend { padding-left: calc(var(--board-w) * 46 / 952); }
+.board { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* A finger or the pen on a board that takes selections drags, never scrolls. */
+.board.interactive { touch-action: none; }
+.board:focus-visible { outline-offset: var(--space-4); border-radius: var(--radius-sm); }
+/* A selected cell is the keyboard's place on the board; a frame around it all would repeat it. */
+.board:focus:not(:focus-visible), .board.has-selection:focus-visible { outline: none; }
+.board .cell { fill: var(--paper); }
+.board.interactive .cell { cursor: pointer; }
+@media (hover: hover) { .board.interactive .cell:hover { fill: var(--cell-hover); } }
+.board .cell.shade-peer { fill: var(--peer); }
+/* A step's shading shows through the selection, which its outline still marks. */
+.board .cell.selected { fill: var(--select); }
+@media (hover: hover) { .board.interactive .cell.selected:hover { fill: var(--select); } }
+.board .cell.shade-house, .board .cell.shade-base, .board .cell.shade-force { fill: var(--tone-soft); }
+.board .cell.shade-cover { fill: var(--cover); }
+.board .cell.shade-base.shade-cover { fill: color-mix(in srgb, var(--tone) 24%, var(--paper)); }
+.board .cell.shade-assume { fill: color-mix(in srgb, var(--tone) 26%, var(--paper)); }
+.board .cell.shade-fail { fill: var(--idea-fail-soft); }
+.board .contradiction rect { fill: none; stroke: var(--idea-fail); stroke-width: var(--fail-line); }
+.board .cell.shade-mistake { fill: var(--wrong-soft); }
+.board .cell.shade-by { fill: var(--rule); }
+.board .cell.shade-clash { fill: var(--wrong-soft); }
+.board .selection rect { fill: none; stroke: var(--accent); stroke-width: var(--select-line); }
+.board .cell.selected.shade-mistake { fill: color-mix(in srgb, var(--wrong) 22%, var(--paper)); }
+.board .grid line.minor { stroke: var(--grid-minor); stroke-width: var(--line-minor); }
+.board .grid line.major { stroke: var(--grid-major); stroke-width: var(--line-major); }
+.board .grid .frame { fill: none; stroke: var(--grid-major); stroke-width: var(--line-frame); }
+.board .labels text { fill: var(--ink-3); font: var(--weight-medium) var(--label-size) var(--font); text-anchor: middle; dominant-baseline: central; }
+.board text, .board .grid, .board .selection, .board .contradiction { pointer-events: none; }
+/* Givens are bold and the player's digits regular, both in ink, so that colour
+   always means something: a mistake, the selection, or a step's idea. */
+.board .digit { font: var(--weight-regular) var(--digit-size) var(--font); text-anchor: middle; dominant-baseline: central; fill: var(--ink); }
+.board .digit.given { font-weight: var(--weight-bold); }
+.board .digit.wrong { fill: var(--wrong); }
+.board .wrong-mark { stroke: var(--wrong); stroke-width: var(--wrong-line); stroke-linecap: round; }
+.board .refuted { stroke: var(--idea-fail); stroke-width: var(--refute-line); stroke-linecap: round; }
+/* Digits inside a case hold only if its assumption does: the step's colour,
+   a size smaller than a real digit; the one forced last sits on a disc. */
+.board .digit.hypothetical { fill: var(--tone); font-size: var(--case-digit-size); font-weight: var(--weight-medium); }
+.board .latest-disc { fill: var(--tone-soft); stroke: var(--tone); stroke-width: var(--mark-thin); }
+.board .digit-small { font: var(--weight-regular) var(--pencil-size) var(--font); fill: var(--pencil); text-anchor: middle; dominant-baseline: central; }
+.board .cand.same .digit-small { fill: var(--accent); font-weight: var(--weight-bold); }
+.board .cand .badge { fill: none; }
+/* The player's notes are pencil, like candidates, and never shown beside them. */
+.board .notes text { fill: var(--pencil); font-family: var(--font); font-weight: var(--weight-regular); dominant-baseline: central; }
+.board .note-corner { font-size: var(--note-corner-size); text-anchor: middle; }
+.board .note-centre { font-size: var(--note-centre-size); text-anchor: middle; }
+.board .note-centre.smaller { font-size: var(--note-centre-smaller); }
+.board .note-centre.smallest { font-size: var(--note-centre-smallest); }
+/* A candidate that picks a step takes the click on its whole badge, not just
+   its ring: digits let clicks through. */
+.board .cand[data-digit] { cursor: pointer; }
+.board .cand[data-digit] .badge { pointer-events: all; }
+.board .mark-place .badge, .board .mark-next .badge { fill: var(--tone); }
+.board .mark-place .digit-small, .board .mark-next .digit-small { fill: var(--paper); font-weight: var(--weight-bold); }
+.board .cand.big .digit-small { font-size: var(--case-digit-size); }
+.board .mark-gone .digit-small, .board .mark-struck .digit-small { fill: var(--pencil); }
+.board .mark-gone .slash, .board .mark-struck .slash { stroke: var(--ink-2); stroke-width: var(--mark-thin); stroke-linecap: round; }
+.board .mark-remove .badge { fill: var(--paper); stroke: var(--tone); stroke-width: var(--mark-line); }
+.board .mark-remove .digit-small { fill: var(--tone); font-weight: var(--weight-bold); }
+.board .mark-remove .slash { stroke: var(--tone); stroke-width: var(--mark-line); stroke-linecap: round; }
+.board .mark-option .badge { stroke: var(--tone); stroke-width: var(--mark-line); fill: var(--paper); }
+.board .mark-option .digit-small, .board .mark-chain .digit-small { fill: var(--ink); font-weight: var(--weight-semibold); }
+.board .mark-chain .badge { fill: var(--tone-soft); stroke: var(--tone); stroke-width: var(--mark-thin); }
+.board .mark-later .badge { stroke: var(--ink-3); stroke-width: var(--mark-thin); stroke-dasharray: var(--dash); }
+/* Arrows run beneath the digits; with arrows shown, digits get an outline in
+   the paper colour so a crossing arrow never runs through them. */
+.board .links path { fill: none; stroke-linecap: round; stroke: var(--tone); stroke-width: var(--line-major); }
+.board.has-links .digit, .board.has-links .cand:not([data-cell]) .digit-small {
+  stroke: var(--paper); stroke-width: var(--halo); paint-order: stroke; stroke-linejoin: round;
+}
+.board.has-links .cand:not([data-cell]) .digit-small { stroke-width: var(--halo-small); }
+.board .arrowhead { fill: var(--tone); }
+.board .number circle { fill: var(--ink); }
+.board .number text { fill: var(--paper); font: var(--weight-bold) var(--number-size) var(--font); text-anchor: middle; dominant-baseline: central; }
+
+/* The heat map (D74): each candidate's slot filled by its effort. */
+.heat-1 { --heat: var(--heat-1); --heat-text: var(--ink); }
+.heat-2 { --heat: var(--heat-2); --heat-text: var(--ink); }
+.heat-3 { --heat: var(--heat-3); --heat-text: var(--ink); }
+.heat-4 { --heat: var(--heat-4); --heat-text: var(--ink); }
+.heat-5 { --heat: var(--heat-5); --heat-text: var(--ink); }
+.heat-6 { --heat: var(--heat-6); --heat-text: var(--paper); }
+.heat-7 { --heat: var(--heat-7); --heat-text: var(--paper); }
+.heat-8 { --heat: var(--heat-8); --heat-text: var(--paper); }
+.heat-9 { --heat: var(--heat-9); --heat-text: var(--paper); }
+.heat-10 { --heat: var(--heat-10); --heat-text: var(--paper); }
+.board .heat .heat-fill { fill: var(--heat, var(--paper)); }
+.board .heat .heat-fill.ring { stroke: var(--tone); stroke-width: var(--mark-line); }
+.board .heat .digit-small { fill: var(--heat-text, var(--pencil)); font-weight: var(--weight-semibold); }
+.heat-bar { display: flex; align-items: baseline; gap: var(--space-7); margin-top: var(--space-3); }
+.heat-scale { display: inline-flex; align-items: center; gap: var(--space-1); }
+.heat-scale .unit { margin-right: var(--space-3); }
+.key.heat-key {
+  width: auto; min-width: var(--heat-key); height: var(--heat-key); border-radius: var(--radius-xs);
+  display: inline-grid; place-items: center; background: var(--heat); color: var(--heat-text);
+  font-size: var(--text-xs); font-style: normal; font-weight: var(--weight-semibold); line-height: 1;
+}
+.key.heat-key.ring { background: var(--heat-1); outline: var(--stroke) solid var(--tone); outline-offset: calc(-1 * var(--stroke)); }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-7); font-size: var(--text-sm); color: var(--ink-2); }
+.legend:empty { display: none; }
+.legend-item { display: inline-flex; align-items: center; gap: var(--space-3); }
+.key { width: var(--swatch); height: var(--swatch); display: inline-block; border-radius: var(--radius-xs); flex: none; }
+.key.place, .key.next { border-radius: 50%; background: var(--tone); }
+.key.gone { background: linear-gradient(135deg, transparent 44%, var(--ink-2) 45% 55%, transparent 56%); }
+.key.hypothetical { width: auto; height: auto; color: var(--tone); font-weight: var(--weight-semibold); line-height: 1; }
+.key.hypothetical::before { content: "4"; }
+.key.remove { border-radius: 50%; border: var(--stroke-fine) solid var(--tone); background: linear-gradient(135deg, transparent 44%, var(--tone) 45% 55%, transparent 56%); }
+.key.option { border: var(--stroke-fine) solid var(--tone); }
+.key.house, .key.base, .key.force { background: var(--tone-soft); outline: var(--hairline) solid color-mix(in srgb, var(--tone) 40%, transparent); }
+.key.assume { background: color-mix(in srgb, var(--tone) 26%, var(--paper)); outline: var(--hairline) solid color-mix(in srgb, var(--tone) 50%, transparent); }
+.key.by { background: var(--rule); }
+.key.clash { background: var(--wrong-soft); }
+.key.cover { background: var(--cover); outline: var(--hairline) solid var(--rule-strong); }
+.key.chain { border-radius: 50%; background: var(--tone-soft); outline: var(--hairline) solid var(--tone); }
+.key.fail { background: var(--idea-fail-soft); border: var(--stroke) solid var(--idea-fail); }
+.key.refuted { background: linear-gradient(135deg, transparent 40%, var(--idea-fail) 41% 59%, transparent 60%); }
+.key.mistake { background: var(--wrong-soft); box-shadow: inset 0 calc(-1 * var(--stroke)) var(--wrong); }
+.key.later { border-radius: 50%; border: var(--stroke-fine) dashed var(--ink-3); }
+.key.arrow { height: var(--stroke); border-radius: var(--radius-xs); background: var(--tone); }
+
+/* ---------- analyse ---------- */
+
+.verdict { display: grid; gap: var(--space-3); }
+.verdict-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-5); }
+
+/* The difficulty strip: effort bars rise from a floor, so that effort 1 stays
+   visible, to the full height at the ceiling; the same scale draws the level's
+   dashed line. Search bars hang from the line, grey. The
+   level's label sits in a gutter on the right, clear of the bars. */
+.strip-host { margin-top: var(--space-6); }
+.strip { position: relative; height: calc(var(--strip-h) + var(--strip-search-h)); padding-right: var(--strip-gutter); }
+.strip::before { content: ""; position: absolute; left: 0; right: 0; top: var(--strip-h); border-top: var(--hairline) solid var(--rule-strong); }
+.strip-bars { display: flex; gap: var(--space-1); height: 100%; }
+.strip-bar {
+  position: relative; flex: 0 1 var(--strip-bar); min-width: var(--space-1); height: 100%;
+  display: grid; grid-template-rows: var(--strip-h) var(--strip-search-h); padding: 0; border: 0; background: none;
+}
+button.strip-bar { cursor: pointer; }
+.strip-bar, .strip-level { --rise: calc(var(--strip-floor) + (var(--strip-h) - var(--strip-floor)) * var(--share)); }
+.strip-bar i { display: block; align-self: end; width: 100%; height: var(--rise); background: var(--tone); opacity: .32; border-radius: var(--radius-xs) var(--radius-xs) 0 0; transition: opacity var(--fast) var(--ease); }
+.strip-bar b { display: block; grid-row: 2; width: 100%; height: calc(var(--strip-search-h) * var(--fall)); margin-top: var(--hairline); background: var(--ink-3); opacity: .32; border-radius: 0 0 var(--radius-xs) var(--radius-xs); transition: opacity var(--fast) var(--ease); }
+@media (hover: hover) { button.strip-bar:hover i, button.strip-bar:hover b { opacity: .6; } }
+.strip-bar[aria-current="step"] i, .strip-bar[aria-current="step"] b { opacity: 1; }
+/* The round picked: its bars in full, and a mark on top of its bar. */
+.strip-bar[aria-current="step"]::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: calc(var(--strip-search-h) + var(--rise) + var(--space-2));
+  height: var(--stroke); background: var(--ink);
+}
+.strip-bar:focus-visible { outline-offset: var(--space-1); }
+/* The round the rating did not work out: an open bar past the ceiling. */
+.strip-bar.beyond i, .strip-bar.beyond[aria-current="step"] i { background: none; opacity: 1; border: var(--hairline) dashed var(--ink-3); border-bottom: 0; }
+/* The player's path (D71): one bar per move on the strip's scale, its time below. */
+.strip.path { margin-top: var(--space-4); }
+.strip.path .strip-bar.helped i { background: repeating-linear-gradient(135deg, var(--tone) 0 var(--hairline), transparent var(--hairline) var(--space-2)); opacity: 1; }
+.strip.path .strip-bar.other i { background: none; opacity: 1; border: var(--hairline) solid var(--ink-3); border-bottom: 0; }
+/* Beside the puzzle's "level", the path's own name in the gutter, on its line. */
+.path-label {
+  position: absolute; right: 0; top: var(--strip-h); transform: translateY(-50%); padding-left: var(--space-3);
+  background: var(--page); font-size: var(--text-xs); line-height: 1; color: var(--ink-2);
+}
+.strip.path .strip-bar.pending i { height: var(--strip-floor); background: var(--ink-3); }
+/* ---------- compare (D72) ---------- */
+
+.compare-head { display: grid; gap: var(--space-5); }
+.paste {
+  width: 100%; resize: vertical; padding: var(--space-4) var(--space-5); border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius-md); background: var(--paper); font-family: var(--font); font-size: var(--text-sm);
+}
+.paste:focus { outline: var(--stroke) solid var(--accent); outline-offset: calc(-1 * var(--hairline)); }
+.compare-actions { display: grid; gap: var(--space-4); }
+.compare-actions .end { justify-content: flex-end; }
+.compare-grid {
+  display: grid; grid-template-columns: var(--space-8) minmax(0, 1fr) repeat(3, var(--compare-figure)); align-items: center; gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+}
+.compare-header { margin-top: var(--space-7); border-bottom: var(--hairline) solid var(--rule); }
+.compare-grid .mini-strip { width: 100%; }
+.compare-header .sort {
+  white-space: nowrap; padding: 0; border: 0; border-bottom: var(--stroke) solid transparent; background: none; text-align: left; cursor: pointer;
+  color: var(--ink-2); font-size: var(--text-sm); font-weight: var(--weight-medium);
+}
+.compare-header .sort.on { color: var(--ink); border-bottom-color: var(--ink); }
+.compare-list { list-style: none; margin: 0; padding: 0; }
+.compare-row { width: 100%; border: 0; background: none; text-align: left; cursor: pointer; border-radius: var(--radius-sm); }
+.compare-row[aria-current="true"] { background: var(--hover); }
+@media (hover: hover) { .compare-row:hover { background: var(--hover); } }
+.compare-row:focus-visible { outline-offset: calc(-1 * var(--stroke)); }
+.figure-cell { color: var(--ink-2); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.mini-strip.failed { border-bottom: var(--hairline) dashed var(--wrong); }
+/* The round past the ceiling, worked out on request (D58). */
+.beyond { display: grid; gap: var(--space-4); justify-items: start; margin-top: var(--space-5); }
+.strip-level { position: absolute; left: 0; right: 0; bottom: calc(var(--strip-search-h) + var(--rise)); border-top: var(--hairline) dashed var(--ink-3); pointer-events: none; }
+.strip-level span { position: absolute; right: 0; bottom: 0; transform: translateY(50%); padding-left: var(--space-3); background: var(--page); font-size: var(--text-xs); line-height: 1; color: var(--ink-2); }
+
+.round-head { display: flex; align-items: center; gap: var(--space-5); }
+.round-head .lead { margin-right: auto; }
+.round-nav { display: flex; gap: var(--space-1); }
+.round-nav .button { width: var(--control); padding: 0 0 var(--space-1); font-size: var(--text-2xl); line-height: 1; }
+.round-head + .meta { margin-top: var(--space-1); }
+
+/* Steps grouped by idea and shape; the steps of a group flow as words, in a
+   slot of fixed height. */
+.round { display: flex; flex-direction: column; min-height: var(--round-h); }
+.round:has(.steps) { height: var(--round-h); }
+/* A round's steps by kind, one tab each: the tab picked is underlined in its
+   idea's colour, never bolder, so no tab moves its neighbours. */
+.step-tabs { display: flex; flex-wrap: wrap; gap: 0 var(--space-7); margin-top: var(--space-5); border-bottom: var(--hairline) solid var(--rule); }
+.step-tab {
+  display: inline-flex; align-items: center; gap: var(--space-3); height: var(--control-sm); padding: 0;
+  margin-bottom: calc(-1 * var(--hairline)); border: 0; border-bottom: var(--stroke) solid transparent; background: none;
+  color: var(--ink-2); font-size: var(--text-md); cursor: pointer;
+}
+.step-tab::before { content: ""; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--tone); flex: none; }
+.step-tab .count { color: var(--ink-3); }
+@media (hover: hover) { .step-tab:hover { color: var(--ink); } }
+.step-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--tone); }
+/* The slot reaches a step's padding past the column on each side, so the
+   picked step's tint is never clipped, while its text stays in line with the
+   column. More steps than fit show a page at a time (dom.fitPages). */
+.round .steps {
+  position: relative; flex: 1 1 0; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  margin: var(--space-2) calc(-1 * var(--space-3)) 0; padding: var(--space-5) var(--space-3) 0;
+}
+.step-flow { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-left: calc(-1 * var(--space-3)); }
+.step-item {
+  text-align: left; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--ink); cursor: pointer; transition: background-color var(--fast) var(--ease);
+}
+@media (hover: hover) { .step-item:hover { background: var(--hover); } }
+.step-item[aria-current="true"] { background: var(--tone-soft); box-shadow: inset 0 calc(-1 * var(--stroke)) var(--tone); }
+
+/* ---------- a step ---------- */
+
+/* A step, wherever the engine gives one: one block, marked down its side by
+   its idea's colour, the colour its marks have on the board. */
+.step { display: grid; gap: var(--space-5); border-left: var(--stroke) solid var(--tone); padding-left: var(--space-6); }
+.step-meta { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-5); }
+.figures { display: flex; align-items: baseline; gap: var(--space-6); }
+.step h2 { margin: 0; font-size: var(--text-xl); line-height: var(--leading-snug); font-weight: var(--weight-bold); letter-spacing: var(--tracking-snug); text-wrap: balance; }
+.step .claim strong { font-weight: var(--weight-semibold); }
+.step > .link { justify-self: start; font-size: var(--text-md); }
+.twins { color: var(--ink-2); font-size: var(--text-md); }
+.details { color: var(--ink-2); font-size: var(--text-sm); }
+.details summary { width: max-content; cursor: pointer; color: var(--ink-3); }
+@media (hover: hover) { .details summary:hover { color: var(--ink); } }
+.details summary::marker { color: var(--ink-3); }
+.details p { margin-top: var(--space-3); }
+
+.cases { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; }
+.case { display: grid; gap: var(--space-4); padding: var(--space-4) 0; border-top: var(--hairline) solid var(--rule); }
+.case:last-child { border-bottom: var(--hairline) solid var(--rule); }
+.case-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.case-label { color: var(--ink-3); font-size: var(--text-sm); min-width: var(--space-11); }
+.case-fact { font-weight: var(--weight-semibold); }
+.case-status { font-size: var(--text-sm); color: var(--ink-2); }
+.case-status.bad { color: var(--idea-fail); }
+.case-head .link { margin-left: auto; font-size: var(--text-sm); }
+.case.open { background: linear-gradient(to right, var(--tone) 0 var(--stroke), transparent var(--stroke)); padding-left: var(--space-5); }
+.case-line { font-size: var(--text-lg); line-height: var(--leading-snug); font-weight: var(--weight-semibold); }
+.stepper { display: flex; align-items: center; gap: var(--space-2); margin-left: calc(-1 * var(--space-4)); }
+.stepper .push { margin-left: auto; font-size: var(--text-sm); }
+.stepper .count { color: var(--ink-3); font-size: var(--text-sm); min-width: calc(3 * var(--space-9)); text-align: center; }
+
+/* ---------- solve ---------- */
+
+.status { display: grid; gap: var(--space-4); }
+.status .verdict-head .left { margin-right: auto; }
+/* The time, beside the title: as tall as a line, so the head keeps its height. */
+.clock { height: auto; padding-block: var(--space-1); font-variant-numeric: tabular-nums; }
+
+.pad { display: grid; gap: var(--space-5); }
+/* The pad is a box of the board: hairlines inside, a frame outside. */
+.digits {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--hairline);
+  background: var(--grid-minor); border: var(--stroke) solid var(--grid-major); border-radius: var(--radius-lg); overflow: hidden;
+}
+.digit-key {
+  position: relative; height: var(--key); border: 0; background: var(--paper); cursor: pointer;
+  font: var(--weight-medium) var(--text-2xl) var(--font); color: var(--ink);
+  transition: background-color var(--fast) var(--ease);
+}
+@media (hover: hover) { .digit-key:hover { background: var(--hover); } }
+.digit-key:active { background: var(--select); }
+/* Inside the frame, so the pad's rounded clip never cuts the ring. */
+.digit-key:focus-visible { outline-offset: calc(-2 * var(--stroke)); z-index: 1; }
+.digit-key small { position: absolute; right: var(--space-4); bottom: var(--space-3); font: var(--weight-medium) var(--text-xs) var(--font); color: var(--ink-3); }
+/* Removing candidates: each key is its digit as a pencil mark. */
+.removing .digit-key { color: var(--ink-2); }
+/* Struck through as on the board: a slash across the digit. */
+.removing .digit-key.gone {
+  color: var(--ink-3);
+  background: linear-gradient(135deg, transparent 46%, var(--ink-2) 46% 54%, transparent 54%) center / 1em 1em no-repeat, var(--paper);
+}
+/* Notes: each key is its digit as that note, and a key in every selected cell is pressed. */
+.noting .digit-key { color: var(--ink-2); }
+.noting.corner .digit-key { text-align: left; vertical-align: top; padding: var(--space-3) var(--space-4); display: flex; align-items: flex-start; }
+.noting .digit-key[aria-pressed="true"] { background: var(--select); color: var(--ink); }
+/* After the removing styles, so that a key with nothing to do looks it. */
+.digit-key:disabled, .removing .digit-key:disabled, .noting .digit-key:disabled { color: var(--rule-strong); background: var(--paper); cursor: default; }
+.edit { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); margin: 0 calc(-1 * var(--space-4)); }
+.edit .button { white-space: nowrap; }
+.edit .push { flex: 1; }
+/* A check's answer colours its button until the digits change. */
+.button.text.check.good { color: var(--right); background: var(--right-soft); }
+@media (hover: hover) { .button.text.check.good:hover { color: var(--right); background: var(--right-soft); } }
+.button.text.check.bad { color: var(--wrong); background: var(--wrong-soft); }
+@media (hover: hover) { .button.text.check.bad:hover { color: var(--wrong); background: var(--wrong-soft); } }
+
+.help { display: grid; gap: var(--space-5); }
+/* The ladder button is as wide as the pad, so no label ever moves it. Unless
+   it is the main action, it is a quiet filled button: an outlined white one
+   this wide reads as a text field. */
+.button.wide { width: 100%; justify-content: space-between; padding: 0 var(--space-5) 0 var(--space-6); }
+.button.wide:not(.primary) { background: var(--hover); border-color: transparent; font-weight: var(--weight-medium); }
+@media (hover: hover) { .button.wide:not(.primary):hover { background: var(--rule); border-color: transparent; } }
+.button.wide:not(.primary):disabled { background: transparent; border-color: var(--rule); font-weight: var(--weight-regular); }
+.context { display: flex; align-items: baseline; gap: var(--space-5); }
+.context .closer { margin-left: auto; }
+.closer { display: inline-flex; align-items: center; gap: var(--space-4); color: var(--ink-3); white-space: nowrap; }
+.help-line { font-size: var(--text-lg); line-height: var(--leading-normal); }
+
+.searching { color: var(--ink); }
+.searching.done { color: var(--ink-2); }
+
+.done-panel { display: grid; gap: var(--space-4); }
+.done-panel .actions { display: grid; justify-items: start; gap: var(--space-6); margin-top: var(--space-5); }
+.done-panel .actions .row { gap: var(--space-8); }
+
+/* ---------- learn ---------- */
+
+/* The overview: an introduction with the way on, then the lessons. */
+.learn-intro { display: grid; gap: var(--space-5); justify-items: start; }
+.learn-intro .continue { margin-top: var(--space-3); }
+.lessons { list-style: none; margin: 0; padding: 0; display: grid; }
+.lessons li + li { border-top: var(--hairline) solid var(--rule); }
+.lesson-row {
+  display: grid; grid-template-columns: var(--space-8) 1fr; align-items: baseline; gap: var(--space-1) var(--space-4);
+  padding: var(--space-6) var(--space-4); margin: 0 calc(-1 * var(--space-4)); border-radius: var(--radius-md);
+  color: var(--ink); text-decoration: none; transition: background-color var(--fast) var(--ease);
+}
+.lesson-row[aria-current="true"] { background: var(--hover); }
+@media (hover: hover) { .lesson-row:hover { background: var(--hover); } }
+.lesson-row:focus-visible { outline-offset: calc(-1 * var(--stroke)); }
+.lesson-number { color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.lesson-name { display: inline-flex; align-items: center; gap: var(--space-4); font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-snug); }
+.lesson-name::before { content: ""; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--tone); }
+.lesson-row .efforts { grid-column: 2; margin-top: var(--space-3); }
+.lesson-short { grid-column: 2; color: var(--ink-2); font-size: var(--text-md); }
+.legend-caption { color: var(--ink); font-weight: var(--weight-semibold); }
+
+/* A lesson's efforts, drawn like the difficulty strip: each bar as tall as its
+   effort on the rating's scale, an outline before any step found there
+   without a hint, a tint after one, the idea's colour once easy. */
+.efforts { display: grid; grid-template-columns: repeat(var(--steps), 1fr); align-items: end; gap: var(--space-3); --h: var(--efforts-h); --w: 100%; }
+.efforts.small { grid-template-columns: repeat(var(--steps), var(--effort-bar-sm)); --h: var(--efforts-h-sm); --w: var(--effort-bar-sm); gap: var(--space-1); }
+.efforts.picker .effort-bar { font-size: var(--text-sm); }
+.effort-bar {
+  display: grid; justify-items: center; gap: var(--space-1); padding: 0 0 var(--space-2); border: 0; background: none;
+  color: var(--ink-3); font: var(--weight-medium) var(--text-xs)/1 var(--font); box-shadow: inset 0 calc(-1 * var(--stroke)) transparent;
+}
+.efforts.small .effort-bar { padding-bottom: 0; }
+button.effort-bar { cursor: pointer; padding-top: var(--space-1); border-radius: var(--radius-xs); }
+.effort-bar i {
+  display: block; width: var(--w); height: calc(var(--strip-floor) + (var(--h) - var(--strip-floor)) * var(--share));
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0; background: var(--rule);
+}
+.effort-bar.started i { background: color-mix(in srgb, var(--tone) 36%, var(--paper)); }
+.effort-bar.easy i { background: var(--tone); }
+.efforts.small .effort-bar span { display: none; }
+@media (hover: hover) { button.effort-bar:hover i { background: color-mix(in srgb, var(--tone) 20%, var(--rule)); } }
+@media (hover: hover) { button.effort-bar.easy:hover i { background: var(--tone); } }
+/* A step of the staircase that is not the lesson's reads quieter than the lesson's, both 4.5:1. */
+.efforts .effort-bar { color: var(--ink-2); }
+.effort-bar.off { color: var(--ink-3); }
+.effort-bar.off i { background: none; box-shadow: inset 0 0 0 var(--hairline) var(--rule); }
+.effort-bar[aria-current="step"] { color: var(--ink); box-shadow: inset 0 calc(-1 * var(--stroke)) var(--ink); }
+
+/* A lesson: where it is, its name, its efforts. */
+.lesson-head { display: grid; gap: var(--space-4); }
+.lesson-title { display: flex; align-items: center; gap: var(--space-5); margin: 0; }
+.lesson-title::before { content: ""; width: var(--space-5); height: var(--space-5); border-radius: 50%; background: var(--tone); flex: none; }
+.lesson-head .verdict-head { margin-top: var(--space-5); }
+
+/* How the idea works: a paragraph and its sketch. */
+.about-idea { display: grid; gap: var(--space-4); color: var(--ink); font-size: var(--text-md); }
+.about-idea summary { max-width: 60%; color: var(--ink-2); font-size: var(--text-md); }
+.about { position: relative; }
+.about-watch { position: absolute; right: 0; top: var(--space-8); max-width: 38%; text-align: right; font-size: var(--text-md); }
+.about-idea p { margin-top: var(--space-4); }
+.sketch { display: block; width: 100%; height: auto; margin-top: var(--space-5); }
+.sketch .cell { fill: var(--paper); }
+.sketch .cell.house { fill: var(--tone-soft); }
+.sketch .cell.assume { fill: color-mix(in srgb, var(--tone) 26%, var(--paper)); }
+.sketch .minor { stroke: var(--grid-minor); stroke-width: var(--hairline); }
+.sketch .major, .sketch .frame { fill: none; stroke: var(--grid-major); stroke-width: var(--stroke-fine); }
+.sketch text { text-anchor: middle; dominant-baseline: central; font-family: var(--font); fill: var(--ink); }
+.sketch .given { font-size: var(--text-xl); font-weight: var(--weight-bold); }
+.sketch .answer { font-size: var(--text-xl); font-weight: var(--weight-bold); fill: var(--tone); }
+.sketch .case { font-size: var(--text-lg); font-weight: var(--weight-medium); fill: var(--tone); }
+.sketch .pencil { font-size: var(--text-xs); fill: var(--pencil); }
+.sketch .pencil.option { font-weight: var(--weight-bold); fill: var(--ink); }
+.sketch .pencil.remove { fill: var(--tone); font-weight: var(--weight-bold); }
+.sketch .option { fill: var(--paper); stroke: var(--tone); stroke-width: var(--hairline); }
+.sketch .slash { stroke: var(--tone); stroke-width: var(--stroke-fine); stroke-linecap: round; }
+.sketch .refuted { stroke: var(--idea-fail); stroke-width: var(--stroke); stroke-linecap: round; }
+.sketch .fail { fill: none; stroke: var(--idea-fail); stroke-width: var(--stroke); }
+.sketch .arrow { fill: none; stroke: var(--tone); stroke-width: var(--stroke-fine); stroke-linecap: round; }
+.sketch .arrowhead { fill: var(--tone); }
+
+/* The task: what to find, then the pad as a row of the board. */
+.task { display: grid; gap: var(--space-5); }
+.row-pad { grid-template-columns: repeat(9, 1fr); border-radius: var(--radius-md); }
+.row-pad .digit-key { height: var(--key-row); font-size: var(--text-xl); }
+.result-line { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+.attempt-line { font-size: var(--text-lg); line-height: var(--leading-snug); }
+
+/* ---------- puzzles ---------- */
+
+/* The level fills the column, so its list's pages turn at the bottom, wherever a
+   shorter page ends. */
+.level { flex: 1 0 auto; display: flex; flex-direction: column; gap: var(--space-5); }
+.level > .pages { margin-top: auto; }
+.level > .title { margin-top: var(--space-5); }
+/* The ideas the level needs, in a line: each one's dot and name, a link to its lesson. */
+.level-about {
+  display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-6); margin-top: calc(-1 * var(--space-2));
+  min-height: calc(var(--text-sm) * var(--leading-normal)); color: var(--ink-2); font-size: var(--text-sm);
+}
+.level-about .idea { font-size: var(--text-sm); text-decoration: none; }
+@media (hover: hover) { .level-about .idea:hover { color: var(--ink); } }
+.level .row { gap: var(--space-3) var(--space-8); }
+.level .puzzle-list { margin-top: var(--space-3); }
+
+/* Making a puzzle: the search asked, the one wide button, what the job is doing. */
+.making { display: grid; gap: var(--space-5); }
+/* Under the button, a slot for a job's lines or how the puzzle in focus was
+   made, at least two lines so the list moves for neither; what is asked of a
+   puzzle to make takes the list's place (D89). */
+.making-note {
+  display: grid; grid-template-columns: max-content 1fr; gap: var(--space-3) var(--space-5); align-content: start;
+  min-height: calc(2 * var(--text-md) * var(--leading-normal) + var(--space-3));
+}
+.making-note > * { grid-column: 1 / -1; }
+.making-note > .cancel { justify-self: end; }
+/* Its two questions share the note's columns, so their labels, in any
+   language, line up and never run under the switches. */
+.ask-search { display: grid; grid-template-columns: subgrid; align-items: baseline; }
+.ask-search > .faint { white-space: nowrap; }
+.ask-search .switch { gap: 0 var(--space-6); }
+.making .result-line + .meta { margin-top: calc(-1 * var(--space-3)); }
+
+/* The levels, a staircase across the column drawn like the strip: each bar as
+   tall as its level, grey once the player has solved a puzzle there, ink when
+   picked; past the ceiling, an open bar. */
+.levels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-3); --tone: var(--ink-3); --w: 100%; }
+.levels .effort-bar { font-size: var(--text-sm); }
+.levels .effort-bar.solved i { background: var(--ink-3); }
+.levels .effort-bar.beyond i { background: none; border: var(--hairline) dashed var(--ink-3); border-bottom: 0; }
+@media (hover: hover) { .levels button.effort-bar.solved:hover i { background: var(--ink-2); } }
+.levels .effort-bar[aria-current="step"] i { background: var(--ink); }
+@media (hover: hover) { .levels button.effort-bar[aria-current="step"]:hover i { background: var(--ink); } }
+.levels .effort-bar.beyond[aria-current="step"] i { background: none; border: var(--stroke) dashed var(--ink); border-bottom: 0; }
+
+/* A list a page at a time (dom.fitPages): the page's place under it. */
+.pages { display: flex; align-items: center; justify-content: center; gap: var(--space-4); margin-top: var(--space-3); }
+.pages .button { width: var(--control); padding: 0 0 var(--space-1); font-size: var(--text-2xl); line-height: 1; }
+.pages .count { color: var(--ink-3); font-size: var(--text-sm); min-width: calc(4 * var(--space-9)); text-align: center; }
+
+/* A puzzle in a list: its strip, its search and how far the player got, then
+   where it came from; Analyse sits apart from the row, which opens Solve, and
+   shows on the row in focus. */
+.puzzle-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.puzzle-list li + li { border-top: var(--hairline) solid var(--rule); }
+.puzzle-item { position: relative; }
+.puzzle-row {
+  display: grid; grid-template-columns: var(--mini-strip) 1fr; align-items: center; gap: var(--space-6);
+  min-height: var(--row); padding: var(--space-4) var(--analyse-room) var(--space-4) var(--space-4); margin: 0 calc(-1 * var(--space-4)); border-radius: var(--radius-md);
+  color: var(--ink); text-decoration: none; transition: background-color var(--fast) var(--ease);
+}
+.puzzle-row[aria-current="true"] { background: var(--hover); }
+@media (hover: hover) { .puzzle-row:hover { background: var(--hover); } }
+.puzzle-row:focus-visible { outline-offset: calc(-1 * var(--stroke)); }
+/* Beside the strip, at most two short lines: the level (Continue) or how far the player got, then the rest. */
+.puzzle-text { display: grid; gap: var(--space-1); min-width: 0; }
+.puzzle-what { font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.puzzle-play { color: var(--ink-2); font-size: var(--text-sm); white-space: nowrap; }
+.puzzle-note { color: var(--ink-3); font-size: var(--text-sm); }
+.solved .puzzle-what { color: var(--ink-2); font-weight: var(--weight-medium); }
+.puzzle-analyse { position: absolute; right: var(--space-1); top: 50%; transform: translateY(-50%); font-size: var(--text-sm); opacity: 0; transition: opacity var(--fast) var(--ease); }
+.puzzle-item:focus-within .puzzle-analyse, .puzzle-row[aria-current="true"] + .puzzle-analyse { opacity: 1; }
+@media (hover: hover) { .puzzle-item:hover .puzzle-analyse { opacity: 1; } }
+
+.mini-strip {
+  position: relative; display: flex; gap: var(--hairline); width: var(--mini-strip); height: calc(var(--efforts-h-sm) + var(--mini-search-h));
+}
+.mini-strip::before { content: ""; position: absolute; left: 0; right: 0; top: var(--efforts-h-sm); border-top: var(--hairline) solid var(--rule-strong); }
+.mini-strip > span { flex: 1 1 0; min-width: var(--hairline); max-width: var(--mini-bar); display: grid; grid-template-rows: var(--efforts-h-sm) var(--mini-search-h); }
+.mini-strip i {
+  display: block; align-self: end;
+  height: calc(var(--strip-floor) / 2 + (var(--efforts-h-sm) - var(--strip-floor) / 2) * var(--share));
+  background: var(--tone); border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+}
+.mini-strip b { display: block; grid-row: 2; height: calc(var(--mini-search-h) * var(--fall)); margin-top: var(--hairline); background: var(--ink-3); opacity: .6; }
+.mini-strip i.beyond { background: none; border: var(--hairline) dashed var(--ink-3); border-bottom: 0; }
+
+/* Under the board: the puzzle in focus in a line. */
+.stage-note { display: grid; gap: var(--space-4); }
+.stage-caption { color: var(--ink-2); font-size: var(--text-sm); }
+.stage-caption b { color: var(--ink); font-weight: var(--weight-semibold); }
+
+/* The keyboard: the app bar's key icon opens a sheet with the screen's shortcuts. */
+.button.icon { width: var(--control); padding: 0; }
+.button.icon svg { width: var(--text-xl); height: var(--text-xl); }
+.keys {
+  inset: calc(var(--bar) - var(--space-3)) var(--space-10) auto auto; margin: 0;
+  padding: var(--space-6) var(--space-7); border: var(--hairline) solid var(--rule); border-radius: var(--radius-lg);
+  background: var(--paper); box-shadow: var(--shadow-raised); color: var(--ink-2); font-size: var(--text-sm);
+}
+/* A title shown to a finger (dom.touchTips): placed by script beside its element. */
+.tip {
+  inset: auto; margin: 0; max-width: calc(var(--measure) / 2);
+  padding: var(--space-3) var(--space-5); border: var(--hairline) solid var(--rule); border-radius: var(--radius-md);
+  background: var(--paper); box-shadow: var(--shadow-raised); color: var(--ink); font-size: var(--text-sm);
+}
+.keys dl { display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--space-4) var(--space-7); margin: 0; }
+.keys dt { display: flex; gap: var(--space-2); }
+.keys dd { margin: 0; }
+.settings { width: calc(var(--board-max) / 2); }
+.settings dl { grid-template-columns: auto 1fr; align-items: start; }
+.settings dt { color: var(--ink); padding-top: var(--space-2); }
+.settings .meta { margin: var(--space-2) 0 0; font-size: var(--text-sm); }
+
+/* ---------- dialog ---------- */
+
+/* Just under the app bar, so that a tablet's keyboard, rising from the bottom,
+   leaves the field and its buttons in view. */
+.dialog {
+  margin: calc(var(--bar) + var(--space-6)) auto auto;
+  width: var(--measure); max-width: calc(100vw - 2 * var(--space-6)); border: 0; border-radius: var(--radius-lg);
+  padding: var(--space-9); background: var(--paper); box-shadow: var(--shadow-raised);
+}
+.dialog::backdrop { background: var(--scrim); }
+.dialog form { display: grid; gap: var(--space-5); }
+.dialog h2 { margin: 0; font-size: var(--text-xl); letter-spacing: var(--tracking-snug); }
+.dialog textarea {
+  width: 100%; resize: none; padding: var(--space-5) var(--space-5); border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius-md); background: var(--page);
+  font: var(--text-md)/var(--leading-normal) var(--font-code); letter-spacing: var(--tracking-code); word-break: break-all;
+}
+.dialog textarea:focus { outline: var(--stroke) solid var(--accent); outline-offset: calc(-1 * var(--hairline)); background: var(--paper); }
+.dialog .row { justify-content: space-between; }
+
+.error { grid-column: 1 / -1; max-width: var(--measure); display: grid; gap: var(--space-4); justify-self: center; padding-top: calc(2 * var(--space-11)); }
+
+/* ---------- narrow screens: a phone, a portrait tablet, a small window ----------
+
+   One column at the board's width. The side column dissolves into it, so each
+   mode orders its sections around the board: what the board is about above
+   it (the status, a lesson's name, the verdict), the pad right under it within
+   the thumb's reach, reading after. Lists (the lessons, the puzzles) come
+   before their board, which only previews them. */
+
+@media (max-width: 719px), (max-width: 859px) and (orientation: portrait) {
+  .bar { gap: var(--space-6); height: var(--bar-narrow); padding: 0 var(--gutter-narrow); }
+  .wordmark-name, .wide-only { display: none; }
+  .narrow-only { display: inline; }
+  .modes { gap: var(--space-6); }
+  #new-puzzle { margin-right: calc(-1 * var(--space-4)); }
+
+  /* Phone layouts are not designed yet (§7): there the page still scrolls. */
+  html, body { overflow: auto; }
+  .app { height: auto; min-height: 100%; }
+  .side { overflow: visible; }
+  .view {
+    overflow: visible;
+    grid-template-columns: minmax(0, var(--board-max)); gap: 0;
+    padding: var(--space-6) var(--gutter-narrow) var(--space-10);
+  }
+  .side { display: contents; }
+  .stage {
+    --board-w: min(var(--board-max), calc(100vw - 2 * var(--gutter-narrow)));
+    padding: var(--space-3) 0 var(--space-8);
+  }
+  .view[data-mode="solve"] .status,
+  .view[data-mode="learn"] .lesson-head,
+  .view[data-mode="analyse"] .verdict { order: -1; padding-bottom: var(--space-6); }
+  .view[data-mode="solve"] .pad, .view[data-mode="learn"] .task { border-top: 0; padding-top: 0; }
+  .view[data-mode="lessons"] .stage, .view[data-mode="puzzles"] .stage { order: 2; padding-top: var(--space-8); }
+  #keys-button { display: none; }
+
+  /* Candidates stay at least 11 CSS px on a phone's board (§7). */
+  .board { --pencil-size: 25px; --label-size: 24px; }
+
+  /* The pad as a row of the board; what is left of a digit sits under it. */
+  .digits { grid-template-columns: repeat(9, 1fr); border-radius: var(--radius-md); }
+  .digit-key, .row-pad .digit-key {
+    height: var(--key-touch); font-size: var(--text-xl);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  }
+  .digit-key small { position: static; margin-top: var(--space-1); font-size: var(--text-xs); }
+  .switch { gap: 0 var(--space-6); }
+
+  .title { font-size: var(--text-2xl); }
+}
+
+@media (max-width: 400px) {
+  .bar, .modes { gap: var(--space-5); }
+  .bar { padding: 0 var(--space-5); }
+}
+
+/* Touch: no keyboard to name, and every control at least 48 px to a finger. */
+@media (hover: none) and (pointer: coarse) {
+  :root { --control: 48px; --control-sm: 48px; }
+  #keys-button, kbd { display: none; }
+}
+
+/* A short screen (a tablet with a larger display size) keeps the pad's keys a
+   finger's size and leaves the step card more room. */
+@media (max-height: 820px) {
+  :root { --key: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+/* ---- the diagnostics page (diagnostics.html), a tool for the tablet build ---- */
+.diagnostics { max-width: var(--board-max); margin: 0 auto; padding: var(--space-9) var(--space-10); }
+.diagnostics h2 { margin-top: var(--space-9); font-size: var(--text-lg); }
+.diagnostics th { text-align: left; font-weight: var(--weight-regular); color: var(--ink-2); padding: var(--space-2) var(--space-8) var(--space-2) 0; vertical-align: top; white-space: nowrap; }
+.diagnostics a { color: var(--accent); }
+.diagnostics td { padding: var(--space-2) 0; overflow-wrap: anywhere; }
+.diagnostics-pad { height: calc(4 * var(--space-11)); margin: var(--space-5) 0; background: var(--paper); border: var(--stroke) solid var(--rule-strong); border-radius: var(--radius-md); touch-action: none; user-select: none; }

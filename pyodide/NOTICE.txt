@@ -1,0 +1,3 @@
+Pyodide 314.0.7 (https://github.com/pyodide/pyodide), Mozilla Public License 2.0;
+its source is at https://github.com/pyodide/pyodide/tree/314.0.7.
+python_stdlib.zip is CPython's standard library, Python Software Foundation License.
